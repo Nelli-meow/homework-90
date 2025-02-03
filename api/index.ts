@@ -8,7 +8,7 @@ import WebSocket from "ws";
 const app = express();
 expressWs(app);
 
-const port =  8000;
+const port = 8000;
 
 app.use(express.json());
 app.use(cors());
@@ -18,30 +18,36 @@ const router = express.Router();
 
 const connectedClients: WebSocket[] = [];
 
-interface IncomingPixel {
-    type: string;
-    payload: string;
+interface pixelsClient {
+    x: number;
+    y: number;
+    color: string;
 }
 
-let pixels = [];
+interface IncomingPixel {
+    type: string;
+    payload: pixelsClient;
+}
+
+let pixels: pixelsClient[] = [];
 
 router.ws('/canvas', (ws, req) => {
     connectedClients.push(ws);
     console.log('Client connected. Clients total - ', connectedClients.length);
 
+    ws.send(JSON.stringify({ type: "PIXEL_HISTORY", payload: pixels}));
+
     ws.on('message', (message) => {
         try {
             const decodedMessage = JSON.parse(message.toString()) as IncomingPixel;
 
-            if(decodedMessage.type === 'DRAW_PIXEL') {
+            if (decodedMessage.type === 'DRAW_PIXEL') {
                 pixels.push(decodedMessage.payload);
 
                 connectedClients.forEach((clientWS) => {
                     clientWS.send(JSON.stringify({
                         type: "NEW_PIXEL",
-                        payload: {
-                            payload: decodedMessage.payload,
-                        },
+                        payload: decodedMessage.payload,
                     }));
                 });
             }
@@ -55,7 +61,7 @@ router.ws('/canvas', (ws, req) => {
         console.log('Client disconnected');
         const index = connectedClients.indexOf(ws);
         connectedClients.splice(index, 1);
-        console.log('client total - ' , connectedClients.length);
+        console.log('client total - ', connectedClients.length);
     });
 });
 
