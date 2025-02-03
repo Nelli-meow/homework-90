@@ -18,14 +18,37 @@ const router = express.Router();
 
 const connectedClients: WebSocket[] = [];
 
+interface IncomingPixel {
+    type: string;
+    payload: string;
+}
+
+let pixels = [];
+
 router.ws('/canvas', (ws, req) => {
     connectedClients.push(ws);
     console.log('Client connected. Clients total - ', connectedClients.length);
 
     ws.on('message', (message) => {
-        connectedClients.forEach((clientWS) => {
-           clientWS.send(message);
-        });
+        try {
+            const decodedMessage = JSON.parse(message.toString()) as IncomingPixel;
+
+            if(decodedMessage.type === 'DRAW_PIXEL') {
+                pixels.push(decodedMessage.payload);
+
+                connectedClients.forEach((clientWS) => {
+                    clientWS.send(JSON.stringify({
+                        type: "NEW_PIXEL",
+                        payload: {
+                            payload: decodedMessage.payload,
+                        },
+                    }));
+                });
+            }
+
+        } catch (error) {
+            ws.send(JSON.stringify({error: 'invalid message'}));
+        }
     });
 
     ws.on('close', () => {
